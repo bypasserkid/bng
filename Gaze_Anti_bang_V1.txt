@@ -1,0 +1,100 @@
+local TeleportTime = 0.1
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+
+local localPlayer = Players.LocalPlayer
+
+local function resetCameraSubject()
+	if workspace.CurrentCamera and localPlayer.Character then
+		local humanoid = localPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+		if humanoid then
+			workspace.CurrentCamera.CameraSubject = humanoid
+		end
+	end
+end
+
+local plr = Players.LocalPlayer
+local character = plr.Character or plr.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+local gui = Instance.new("ScreenGui")
+local btn = Instance.new("TextButton")
+
+local toggle = false
+local targetPos = Vector3.new(905, -500, 0)
+local lastPos = hrp.Position
+local velConn
+
+gui.Parent = plr:WaitForChild("PlayerGui")
+
+btn.Size = UDim2.new(0, 100, 0, 50)
+btn.Position = UDim2.new(0.5, -50, 0.5, -25)
+btn.Text = "Toggle OFF"
+btn.BackgroundColor3 = Color3.new(0.7, 0.7, 0.7)
+btn.TextColor3 = Color3.new(1, 1, 1)
+btn.Draggable = true
+btn.Parent = gui
+
+local function createTween(targetCFrame)
+    local tweenInfo = TweenInfo.new(TeleportTime, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    return TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
+end
+
+local function startVelLoop()
+    velConn = RunService.Heartbeat:Connect(function()
+        if toggle then
+            hrp.Velocity = Vector3.new(0, 0, 0)
+        end
+    end)
+end
+
+local function stopVelLoop()
+    if velConn then
+        velConn:Disconnect()
+        velConn = nil
+    end
+end
+
+local function toggleTween()
+    if toggle then
+        toggle = false
+        btn.Text = "OFF"
+        btn.BackgroundColor3 = Color3.new(1, 0, 0)
+        stopVelLoop()
+        local tweenBack = createTween(CFrame.new(lastPos))
+        tweenBack:Play()
+        tweenBack.Completed:Wait()
+        workspace.FallenPartsDestroyHeight = -500
+        resetCameraSubject()
+        if workspace:FindFirstChild("Gaze") then
+            workspace.Gaze:Destroy()
+        end
+    else
+    lastPos = hrp.Position
+    local part = Instance.new("Part")
+        part.Size = Vector3.new(4, 1, 4)
+        part.Position = lastPos
+        part.Anchored = true
+        part.CanCollide = false
+        part.Transparency = 0.5
+        part.Name = "Gaze"
+        part.Parent = game.Workspace
+        workspace.CurrentCamera.CameraSubject = part
+        toggle = true
+        btn.Text = "ON"
+        btn.BackgroundColor3 = Color3.new(0, 1, 0)
+        
+        wait()
+        workspace.FallenPartsDestroyHeight = -1000
+        local tweenToTarget = createTween(CFrame.new(targetPos))
+        tweenToTarget:Play()
+        tweenToTarget.Completed:Wait()
+        startVelLoop()
+        
+    end
+end
+
+btn.MouseButton1Click:Connect(toggleTween)
